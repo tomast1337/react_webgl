@@ -2,8 +2,9 @@ import * as React from "react";
 import * as glM from "gl-matrix";
 import { keysType } from "./gc-entities";
 import { Camera, createDefaultCamera } from "./gc-entities/Camera";
-import { createShader } from "./gc-entities/Shader";
+import { createShader, Shader } from "./gc-entities/Shader";
 import { Texture } from "./gc-entities/Texture";
+import { Mesh } from "./gc-entities/Mesh";
 
 export default () => {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -102,6 +103,8 @@ export default () => {
   );
 };
 
+
+
 class Render {
   canvas: HTMLCanvasElement;
   gl: WebGL2RenderingContext;
@@ -125,16 +128,16 @@ class Render {
     );
 
     const vertexShaderSource = `#version 300 es
-        in vec2 position;
-        in vec2 uv;
-        uniform mat4 in_projection;
-        uniform mat4 in_view;
-        uniform mat4 in_model;
+        in vec2 in_position;
+        in vec2 in_uv;
+        uniform mat4 u_projection;
+        uniform mat4 u_view;
+        uniform mat4 u_model;
         out vec2 out_uv; // send uv to fragment shader
         void main() {
-            gl_Position = in_projection * in_view * in_model * vec4(position, 0.0, 1.0);
+            gl_Position = u_projection * u_view * u_model * vec4(in_position, 0.0, 1.0);
         
-            out_uv = uv;
+            out_uv = in_uv;
         }
         `;
 
@@ -154,74 +157,7 @@ class Render {
       vertexShaderSource,
       fragmentShaderSource
     );
-
-    const drawQuad = (x: number, y: number, w: number, h: number) => {
-      // vertex buffer
-      const vertices = new Float32Array([
-        x,
-        y,
-        x + w,
-        y,
-        x,
-        y + h,
-        x + w,
-        y + h,
-      ]);
-      // index buffer
-      const indices = new Uint16Array([0, 1, 2, 2, 1, 3]);
-      // uv buffer
-      const uvs = new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]);
-      // create vao vertex array object
-      const vao = this.gl.createVertexArray();
-      if (!vao) {
-        throw new Error("Failed to create vao");
-      }
-      this.gl.bindVertexArray(vao);
-      // create vertex buffer object
-      const vbo = this.gl.createBuffer();
-      if (!vbo) {
-        throw new Error("Failed to create buffer");
-      }
-      // create index buffer object
-      const ibo = this.gl.createBuffer();
-      if (!ibo) {
-        throw new Error("Failed to create buffer");
-      }
-      // create uv buffer object
-      const uvbo = this.gl.createBuffer();
-      if (!uvbo) {
-        throw new Error("Failed to create buffer");
-      }
-      // bind buffer objects
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vbo);
-      this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, ibo);
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, uvbo);
-      // set buffer data
-      this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
-      this.gl.bufferData(
-        this.gl.ELEMENT_ARRAY_BUFFER,
-        indices,
-        this.gl.STATIC_DRAW
-      );
-      this.gl.bufferData(this.gl.ARRAY_BUFFER, uvs, this.gl.STATIC_DRAW);
-      // set vertex attributes
-      this.gl.enableVertexAttribArray(0);
-      this.gl.enableVertexAttribArray(1);
-      this.gl.vertexAttribPointer(0, 2, this.gl.FLOAT, false, 0, 0);
-      this.gl.vertexAttribPointer(1, 2, this.gl.FLOAT, false, 0, 0);
-      // draw
-      this.gl.drawElements(
-        this.gl.TRIANGLES,
-        indices.length,
-        this.gl.UNSIGNED_SHORT,
-        0
-      );
-      // unbind this destructs the vao
-      this.gl.bindVertexArray(null);
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
-      this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, null);
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
-    };
+    
     const background = {
       r: 0,
       g: 0,
@@ -266,7 +202,15 @@ class Render {
 
     const texturePng = new Texture(this.gl, "/textures/wall.png");
     const textureJpg = new Texture(this.gl, "/textures/test.jpg");
-    const textureTranparent = new Texture(this.gl, "/textures/glass.png","transparent");
+    const textureTranparent = new Texture(
+      this.gl,
+      "/textures/glass.png",
+      "transparent"
+    );
+
+    const mesh = Mesh.createPlane(this.gl, 1, 1, texturePng, shader);
+    const mesh2 = Mesh.createPlane(this.gl, 1, 1, textureJpg, shader);
+    const mesh3 = Mesh.createPlane(this.gl, 1, 1, textureTranparent, shader);
 
     // resize canvas
     window.addEventListener("resize", resizeCanvas);
@@ -275,8 +219,8 @@ class Render {
 
       //this.gl.clearColor(background.r, background.g, background.b, 1);
       shader.use((program) => {
-        shader.setUniformMat4("in_projection", this.camera.projectionMatrix);
-        shader.setUniformMat4("in_view", this.camera.viewMatrix);
+        shader.setUniformMat4("u_projection", this.camera.projectionMatrix);
+        shader.setUniformMat4("u_view", this.camera.viewMatrix);
       });
 
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
@@ -287,25 +231,23 @@ class Render {
       shader.use((program) => {
         const modelMatrix = glM.mat4.create();
         glM.mat4.translate(modelMatrix, modelMatrix, [-1, 0, -1]);
-        shader.setUniformMat4("in_model", modelMatrix);
-        shader.setUniformTexture("in_texture", texturePng, 0);
+        shader.setUniformMat4("u_model", modelMatrix);
       });
-      drawQuad(0, 0, 0.1, 0.1);
+      mesh.draw();
 
       shader.use((program) => {
         const modelMatrix = glM.mat4.create();
         glM.mat4.translate(modelMatrix, modelMatrix, [0, 0, -1]);
-        shader.setUniformMat4("in_model", modelMatrix);
-        shader.setUniformTexture("in_texture", textureJpg, 0);
+        shader.setUniformMat4("u_model", modelMatrix);
       });
-      drawQuad(0.1, 0, 0.1, 0.1);
+      mesh2.draw();
+
       shader.use((program) => {
         const modelMatrix = glM.mat4.create();
         glM.mat4.translate(modelMatrix, modelMatrix, [1, 0, -1]);
-        shader.setUniformMat4("in_model", modelMatrix);
-        shader.setUniformTexture("in_texture", textureTranparent, 0);
+        shader.setUniformMat4("u_model", modelMatrix);
       });
-      drawQuad(0.2, 0, 0.1, 0.1);
+      mesh3.draw();
     };
     this.renderFunc = renderFunc;
   }

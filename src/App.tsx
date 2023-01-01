@@ -121,6 +121,16 @@ class Render {
     }
     this.gl = gl;
 
+    // enable depth testing
+    this.gl.enable(this.gl.DEPTH_TEST);
+    this.gl.depthFunc(this.gl.LEQUAL);
+
+    // enable alpha blending
+    this.gl.enable(this.gl.BLEND);
+    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA); // this allows us to have transparent textures
+    
+
+
     this.camera = createDefaultCamera(
       this.gl.canvas.width,
       this.gl.canvas.height

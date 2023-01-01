@@ -5,6 +5,7 @@ import { Camera, createDefaultCamera } from "./gc-entities/Camera";
 import { createShader, Shader } from "./gc-entities/Shader";
 import { Texture } from "./gc-entities/Texture";
 import { Mesh } from "./gc-entities/Mesh";
+import { SceneObject } from "./gc-entities/SceneObject";
 
 export default () => {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -103,8 +104,6 @@ export default () => {
   );
 };
 
-
-
 class Render {
   canvas: HTMLCanvasElement;
   gl: WebGL2RenderingContext;
@@ -157,7 +156,7 @@ class Render {
       vertexShaderSource,
       fragmentShaderSource
     );
-    
+
     const background = {
       r: 0,
       g: 0,
@@ -212,6 +211,28 @@ class Render {
     const mesh2 = Mesh.createPlane(this.gl, 1, 1, textureJpg, shader);
     const mesh3 = Mesh.createPlane(this.gl, 1, 1, textureTranparent, shader);
 
+    const sceneObjects = [] as SceneObject[];
+
+    Array.from({ length: 100 }).forEach((_, i) => {
+        const oPosition = glM.vec3.fromValues(
+            Math.random() * 10 - 5,
+            Math.random() * 10 - 5,
+            Math.random() * 10 - 5
+        );
+        const oRotation = glM.vec3.fromValues(
+            Math.random() * 360,
+            Math.random() * 360,
+            Math.random() * 360
+        );
+        const oScale = glM.vec3.fromValues(1, 1, 1);
+        const oMesh = [mesh, mesh2, mesh3][Math.floor(Math.random() * 3)];
+
+        const sceneObject = new SceneObject(oMesh,shader, oPosition, oRotation, oScale);
+        sceneObjects.push(sceneObject);
+    });
+
+
+
     // resize canvas
     window.addEventListener("resize", resizeCanvas);
     const renderFunc = () => {
@@ -228,26 +249,9 @@ class Render {
       background.g = Math.cos(Date.now() / 1000) / 4 - 0.5;
       background.b = Math.sin(Date.now() / 1000) / 6 + 0.5;
 
-      shader.use((program) => {
-        const modelMatrix = glM.mat4.create();
-        glM.mat4.translate(modelMatrix, modelMatrix, [-1, 0, -1]);
-        shader.setUniformMat4("u_model", modelMatrix);
+      sceneObjects.forEach((sceneObject) => {
+        sceneObject.draw();
       });
-      mesh.draw();
-
-      shader.use((program) => {
-        const modelMatrix = glM.mat4.create();
-        glM.mat4.translate(modelMatrix, modelMatrix, [0, 0, -1]);
-        shader.setUniformMat4("u_model", modelMatrix);
-      });
-      mesh2.draw();
-
-      shader.use((program) => {
-        const modelMatrix = glM.mat4.create();
-        glM.mat4.translate(modelMatrix, modelMatrix, [1, 0, -1]);
-        shader.setUniformMat4("u_model", modelMatrix);
-      });
-      mesh3.draw();
     };
     this.renderFunc = renderFunc;
   }

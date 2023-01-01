@@ -1,4 +1,6 @@
 import * as glM from "gl-matrix";
+import { Texture } from "./Texture";
+
 export class Shader {
   gl: WebGL2RenderingContext;
   program: WebGLProgram;
@@ -41,28 +43,37 @@ export class Shader {
       throw new Error("Failed to link program");
     }
   }
-  use(callback: (program: WebGLProgram) => void) {
+  public use(callback: (program: WebGLProgram) => void) {
     this.gl.useProgram(this.program);
     callback(this.program);
   }
-  setUniformVec4(name: string, value: glM.vec4) {
+  public setUniformVec4(name: string, value: glM.vec4) {
     this.gl.uniform4fv(this.gl.getUniformLocation(this.program, name), value);
   }
-  setUniformMat4(name: string, value: glM.mat4) {
+  public setUniformMat4(name: string, value: glM.mat4) {
     this.gl.uniformMatrix4fv(
       this.gl.getUniformLocation(this.program, name),
       false,
       value
     );
   }
-  setUniformVec3(name: string, value: glM.vec3) {
+  public setUniformVec3(name: string, value: glM.vec3) {
     this.gl.uniform3fv(this.gl.getUniformLocation(this.program, name), value);
   }
-  setUniformFloat(name: string, value: number) {
+  public setUniformFloat(name: string, value: number) {
     this.gl.uniform1f(this.gl.getUniformLocation(this.program, name), value);
   }
-  setUniformInt(name: string, value: number) {
+  public setUniformInt(name: string, value: number) {
     this.gl.uniform1i(this.gl.getUniformLocation(this.program, name), value);
+  }
+  public setUniformTexture(
+    name: string,
+    texture: Texture,
+    sampler: number
+  ): void {
+    this.gl.activeTexture(this.gl.TEXTURE0 + sampler);
+    this.gl.bindTexture(this.gl.TEXTURE_2D, texture.texture);
+    this.gl.uniform1i(this.gl.getUniformLocation(this.program, name), sampler);
   }
 }
 

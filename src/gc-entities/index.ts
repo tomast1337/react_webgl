@@ -1,0 +1,1 @@
+export type keysType = { [key: string]: boolean };

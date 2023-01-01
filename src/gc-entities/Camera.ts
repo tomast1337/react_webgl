@@ -2,18 +2,33 @@ import * as glM from "gl-matrix";
 import { keysType } from "./index";
 
 export class Camera {
+  //A posição da câmera no espaço.
   public position: glM.vec3;
-  private world_up: glM.vec3;
-  public yaw: number;
-  public pitch: number;
-  private front: glM.vec3;
-  private right: glM.vec3;
+  //A direção "para cima" do mundo.
   private up: glM.vec3;
+  //A direção "para a direita" do mundo.
+  private right: glM.vec3;
+  //A direção "para frente" da câmera.
+  private front: glM.vec3;
+  //A direção "para cima" do mundo.
+  private world_up: glM.vec3;
+  //O ângulo de rotação da câmera em torno do eixo Y.
+  public yaw: number;
+  //O ângulo de rotação da câmera em torno do eixo X.
+  public pitch: number;
+  //A matriz de projeção da câmera.
   public projection: glM.mat4;
+  //A matriz de visualização da câmera. indica a posição da câmera no espaço.
+  public view: glM.mat4;
+  //O campo de visão da câmera.
   private fov: number;
+  //A largura da tela.
   private width: number;
+  //A altura da tela.
   private height: number;
+  //A distância mínima de renderização.
   private near: number;
+  //A distância máxima de renderização.
   private far: number;
   constructor(
     position: glM.vec3,
@@ -34,6 +49,7 @@ export class Camera {
     this.right = glM.vec3.create();
     this.up = glM.vec3.create();
     this.projection = glM.mat4.create();
+    this.view = glM.mat4.create();
 
     this.fov = fov;
     this.width = width;
@@ -71,9 +87,12 @@ export class Camera {
     );
   }
   get viewMatrix() {
-    const view = glM.mat4.create();
-    return glM.mat4.lookAt(
-      view,
+    this.updateViewMatrix();
+    return this.view;
+  }
+  private updateViewMatrix() {
+    this.view = glM.mat4.lookAt(
+      this.view,
       this.position,
       glM.vec3.add(glM.vec3.create(), this.position, this.front),
       this.up
@@ -125,7 +144,7 @@ export class Camera {
   }
 
   processKeyboard(keys: keysType) {
-    const velocity = .1;
+    const velocity = 0.1;
     if (keys["w"]) {
       this.position = glM.vec3.add(
         glM.vec3.create(),

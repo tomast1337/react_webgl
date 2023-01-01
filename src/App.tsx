@@ -128,8 +128,9 @@ class Render {
     // enable alpha blending
     this.gl.enable(this.gl.BLEND);
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA); // this allows us to have transparent textures
-    
 
+    // wireframe mode
+    //this.gl.polygonMode(this.gl.FRONT_AND_BACK, this.gl.LINE);
 
     this.camera = createDefaultCamera(
       this.gl.canvas.width,
@@ -137,21 +138,23 @@ class Render {
     );
 
     const vertexShaderSource = `#version 300 es
-        in vec2 in_position;
+        in vec3 in_position;
         in vec2 in_uv;
+        
+        out vec2 out_uv; // send uv to fragment shader
+        
         uniform mat4 u_projection;
         uniform mat4 u_view;
         uniform mat4 u_model;
-        out vec2 out_uv; // send uv to fragment shader
-        void main() {
-            gl_Position = u_projection * u_view * u_model * vec4(in_position, 0.0, 1.0);
         
+        void main() {
+            gl_Position = u_projection * u_view * u_model * vec4(in_position, 1.0);
             out_uv = in_uv;
         }
         `;
 
     const fragmentShaderSource = `#version 300 es
-        precision mediump float;
+        precision highp float;
         in vec2 out_uv; // receive uv from vertex shader
         out vec4 color; // send color to the gpu to be rendered
         // texture
@@ -217,31 +220,44 @@ class Render {
       "transparent"
     );
 
-    const mesh = Mesh.createPlane(this.gl, 1, 1, texturePng, shader);
-    const mesh2 = Mesh.createPlane(this.gl, 1, 1, textureJpg, shader);
-    const mesh3 = Mesh.createPlane(this.gl, 1, 1, textureTranparent, shader);
-
     const sceneObjects = [] as SceneObject[];
 
     Array.from({ length: 100 }).forEach((_, i) => {
-        const oPosition = glM.vec3.fromValues(
-            Math.random() * 10 - 5,
-            Math.random() * 10 - 5,
-            Math.random() * 10 - 5
-        );
-        const oRotation = glM.vec3.fromValues(
-            Math.random() * 360,
-            Math.random() * 360,
-            Math.random() * 360
-        );
-        const oScale = glM.vec3.fromValues(1, 1, 1);
-        const oMesh = [mesh, mesh2, mesh3][Math.floor(Math.random() * 3)];
+      const oPosition = glM.vec3.fromValues(
+        Math.random() * 10 - 5,
+        Math.random() * 10 - 5,
+        Math.random() * 10 - 5
+      );
+      const oRotation = glM.vec3.fromValues(
+        Math.random() * 360,
+        Math.random() * 360,
+        Math.random() * 360
+      );
+      const oScale = glM.vec3.fromValues(1, 1, 1);
 
-        const sceneObject = new SceneObject(oMesh,shader, oPosition, oRotation, oScale);
-        sceneObjects.push(sceneObject);
+      // pick random mesh and texture from Mesh.createSphere, Mesh.createCube and Mesh.createPlane
+
+        const texture = [
+        texturePng,
+        textureJpg,
+        textureTranparent,
+        ][Math.floor(Math.random() * 3)];
+
+      const mesh = [
+        Mesh.createSphere(this.gl, 1, 32, 32, texture, shader),
+        Mesh.createCube(this.gl, 1, 1, 1, texture, shader),
+        Mesh.createPlane(this.gl, 1, 1, texture, shader),
+      ][Math.floor(Math.random() * 3)];
+
+      const sceneObject = new SceneObject(
+        mesh,
+        shader,
+        oPosition,
+        oRotation,
+        oScale
+      );
+      sceneObjects.push(sceneObject);
     });
-
-
 
     // resize canvas
     window.addEventListener("resize", resizeCanvas);

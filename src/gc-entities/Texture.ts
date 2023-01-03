@@ -80,4 +80,22 @@ export class Texture {
   unbind() {
     this.gl.bindTexture(this.gl.TEXTURE_2D, null);
   }
+
+  static loadTexture(
+    gl: WebGL2RenderingContext,
+    imagePath: string,
+    type: TextureType = "image",
+    warps: boolean = true,
+    filters: boolean = true
+  ) {
+    const warpsParams = {
+      s: warps ? gl.REPEAT : gl.CLAMP_TO_EDGE,
+      t: warps ? gl.REPEAT : gl.CLAMP_TO_EDGE,
+    };
+    const filtersParams = {
+      min: filters ? gl.LINEAR : gl.NEAREST,
+      mag: filters ? gl.LINEAR : gl.NEAREST,
+    };
+    return new Texture(gl, imagePath, type, warpsParams, filtersParams);
+  }
 }

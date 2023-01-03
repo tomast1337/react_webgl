@@ -210,18 +210,33 @@ export class Camera {
     }
     this.updateCameraVectors();
   }
-}
 
-export const createDefaultCamera = (width: number, height: number) => {
-  return new Camera(
-    glM.vec3.fromValues(0, 0, 3),
-    glM.vec3.fromValues(0, 1, 0),
-    -90,
-    0,
-    45,
-    width,
-    height,
-    0.1,
-    100
-  );
-};
+  // Static methods
+  static createDefaultCamera = (width: number, height: number) => {
+    return new Camera(
+      glM.vec3.fromValues(0, 0, 3),
+      glM.vec3.fromValues(0, 1, 0),
+      -90,
+      0,
+      45,
+      width,
+      height,
+      0.1,
+      100
+    );
+  };
+
+  static createIsometricCamera = (width: number, height: number) => {
+    return new Camera(
+      glM.vec3.fromValues(0, 0, 3),
+      glM.vec3.fromValues(0, 1, 0),
+      -45,
+      45,
+      45,
+      width,
+      height,
+      0.1,
+      100
+    );
+  };
+}

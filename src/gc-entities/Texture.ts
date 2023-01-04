@@ -65,7 +65,7 @@ export class Texture {
             this.gl.UNSIGNED_BYTE,
             image
           );
-          this.gl.generateMipmap(this.gl.TEXTURE_2D);
+          //this.gl.generateMipmap(this.gl.TEXTURE_2D);
           console.log(`Loaded texture ${imagePath}`);
         },
         false

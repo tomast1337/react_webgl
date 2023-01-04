@@ -16,7 +16,6 @@ export class Mesh {
     this.vao = vao;
     this.texture = texture;
     this.elementCount = elementCount;
-    console.log(this);
   }
 
   draw() {
@@ -37,8 +36,7 @@ export class Mesh {
     indices: number[],
     uvs: number[],
     normals: number[],
-    texture: Texture,
-    shader: Shader
+    texture: Texture
   ) {
     const vao = gl.createVertexArray();
     if (!vao) {
@@ -107,8 +105,7 @@ export class Mesh {
     gl: WebGL2RenderingContext,
     width: number = 1,
     height: number = 1,
-    texture: Texture,
-    shader: Shader
+    texture: Texture
   ) {
     const vertices = [
       // 4 vertices
@@ -128,7 +125,7 @@ export class Mesh {
     const indices = [0, 1, 2, 0, 2, 3]; // 2 triangles
     const uvs = [0, 0, 1, 0, 1, 1, 0, 1]; // 4 uvs
     const normals = [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1];
-    return Mesh.create(gl, vertices, indices, uvs, normals, texture, shader);
+    return Mesh.create(gl, vertices, indices, uvs, normals, texture);
   }
 
   static createCube(
@@ -136,78 +133,119 @@ export class Mesh {
     width: number = 1,
     height: number = 1,
     depth: number = 1,
-    texture: Texture,
-    shader: Shader
+    texture: Texture
   ) {
     // 8 vertices
     const cube_vertices = [
-    // front
-    0,          0,     0, // 0
-    width,      0,     0, // 1
-    width, height,     0, // 2
-    0,     height,     0, // 3
-    // left
-    0,          0,      0, // 4
-    0,     height,      0, // 5
-    0,     height,  depth, // 6
-    0,          0,  depth, // 7
-    // back
-    0,          0,  depth, // 8
-    0,     height,  depth, // 9
-    width, height,  depth, // 10
-    width,      0,  depth, // 11
-    // right
-    width,      0,  depth, // 12
-    width, height,  depth, // 13
-    width, height,      0, // 14
-    width,      0,      0, // 15
-    // top
-    0,      height,     0, // 16
-    width,  height,     0, // 17
-    width,  height, depth, // 18
-    0,      height, depth, // 19
-    // bottom
-    0,          0,      0, // 20
-    0,          0,      depth, // 21s
-    width,      0,      depth, // 22
-    width,      0,      0, // 23
+      // front
+      0,
+      0,
+      0, // 0
+      width,
+      0,
+      0, // 1
+      width,
+      height,
+      0, // 2
+      0,
+      height,
+      0, // 3
+      // left
+      0,
+      0,
+      0, // 4
+      0,
+      height,
+      0, // 5
+      0,
+      height,
+      depth, // 6
+      0,
+      0,
+      depth, // 7
+      // back
+      0,
+      0,
+      depth, // 8
+      0,
+      height,
+      depth, // 9
+      width,
+      height,
+      depth, // 10
+      width,
+      0,
+      depth, // 11
+      // right
+      width,
+      0,
+      depth, // 12
+      width,
+      height,
+      depth, // 13
+      width,
+      height,
+      0, // 14
+      width,
+      0,
+      0, // 15
+      // top
+      0,
+      height,
+      0, // 16
+      width,
+      height,
+      0, // 17
+      width,
+      height,
+      depth, // 18
+      0,
+      height,
+      depth, // 19
+      // bottom
+      0,
+      0,
+      0, // 20
+      0,
+      0,
+      depth, // 21s
+      width,
+      0,
+      depth, // 22
+      width,
+      0,
+      0, // 23
     ];
     // 12 triangles
     const cube_indices = [
       // front
-        0,  1,  2,
-        0,  2,  3,
-        // left
-        4,  5,  6,
-        4,  6,  7,
-        // back
-        8,  9, 10,
-        8, 10, 11,
-        // right
-        12, 13, 14,
-        12, 14, 15,
-        // top
-        16, 17, 18,
-        16, 18, 19,
-        // bottom
-        20, 21, 22,
-        20, 22, 23,
+      0, 1, 2, 0, 2, 3,
+      // left
+      4, 5, 6, 4, 6, 7,
+      // back
+      8, 9, 10, 8, 10, 11,
+      // right
+      12, 13, 14, 12, 14, 15,
+      // top
+      16, 17, 18, 16, 18, 19,
+      // bottom
+      20, 21, 22, 20, 22, 23,
     ];
     // 4 * 6 = 24 uvs
     // TODO: fix uvs
     const cube_uvs = [
-        // front
-        0, 0, 1, 0, 1, 1, 0, 1,
-        // left
-        0, 0, 1, 0, 1, 1, 0, 1,
-        // back
-        0, 0, 1, 0, 1, 1, 0, 1,
-        // right
-        0, 0, 1, 0, 1, 1, 0, 1,
-        // top
-        0, 0, 1, 0, 1, 1, 0, 1,
-        // bottom
-        0, 0, 1, 0, 1, 1, 0, 1,
+      // front
+      0, 0, 1, 0, 1, 1, 0, 1,
+      // left
+      0, 0, 1, 0, 1, 1, 0, 1,
+      // back
+      0, 0, 1, 0, 1, 1, 0, 1,
+      // right
+      0, 0, 1, 0, 1, 1, 0, 1,
+      // top
+      0, 0, 1, 0, 1, 1, 0, 1,
+      // bottom
+      0, 0, 1, 0, 1, 1, 0, 1,
     ];
     const cube_normals = [
       // front
@@ -224,19 +262,16 @@ export class Mesh {
       0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0,
     ];
 
-    console.log({
-      cube_vertices,
-      cube_indices,
-      cube_uvs,
-    });
+    console.log(
+      `cube_vertices: ${cube_vertices.length}, cube_indices: ${cube_indices.length}, cube_uvs: ${cube_uvs.length}, cube_normals: ${cube_normals.length}`
+    );
     return Mesh.create(
       gl,
       cube_vertices,
       cube_indices,
       cube_uvs,
       cube_normals,
-      texture,
-      shader
+      texture
     );
   }
   static createSphere(
@@ -244,8 +279,7 @@ export class Mesh {
     radius: number,
     slices: number,
     stacks: number,
-    texture: Texture,
-    shader: Shader
+    texture: Texture
   ) {
     let latitude = 0;
     let longitude = 0;
@@ -295,14 +329,59 @@ export class Mesh {
       }
     }
 
-    return Mesh.create(
-      gl,
-      vertices,
-      indices,
-      tex_coords,
-      normals,
-      texture,
-      shader
+    return Mesh.create(gl, vertices, indices, tex_coords, normals, texture);
+  }
+
+  static async LoadOBJ(
+    gl: WebGL2RenderingContext,
+    name: string,
+    texture: Texture
+  ) {
+    let objFile;
+    const root = "models/";
+    try {
+      objFile = await fetch(root + name).then((r) => r.text());
+    } catch (e) {
+      throw e;
+    }
+    let vertices = [];
+    let indices = [];
+    let tex_coords = [];
+    let normals = [];
+
+    const objLines = objFile.split("\n");
+
+    for (let i = 0; i < objLines.length; i++) {
+      const line = objLines[i].trim();
+      const lineValues = line.split(" ");
+      if (lineValues[0] === "v") {
+        vertices.push(parseFloat(lineValues[1]));
+        vertices.push(parseFloat(lineValues[2]));
+        vertices.push(parseFloat(lineValues[3]));
+      } else if (lineValues[0] === "vt") {
+        console.log(lineValues);
+        tex_coords.push(parseFloat(lineValues[1]));
+        tex_coords.push(parseFloat(lineValues[2]));
+      } else if (lineValues[0] === "vn") {
+        normals.push(parseFloat(lineValues[1]));
+        normals.push(parseFloat(lineValues[2]));
+        normals.push(parseFloat(lineValues[3]));
+      } else if (lineValues[0] === "f") {
+        for (let j = 1; j < lineValues.length; j++) {
+          const vertexValues = lineValues[j].split("/");
+          indices.push(parseInt(vertexValues[0]) - 1);
+          tex_coords.push(parseFloat(vertexValues[1]) - 1);
+          normals.push(parseFloat(vertexValues[2]) - 1);
+        }
+      }
+    }
+
+    console.log(
+      `Loaded ${vertices.length / 3} vertices, ${indices.length / 3} faces, ${
+        tex_coords.length / 2
+      } tex_coords,  ${normals.length / 3} normals`
     );
+
+    return Mesh.create(gl, vertices, indices, tex_coords, normals, texture);
   }
 }

@@ -1,11 +1,13 @@
 import * as React from "react";
 import * as glM from "gl-matrix";
 import { keysType } from "./gc-entities";
-import { Camera, createDefaultCamera } from "./gc-entities/Camera";
-import { createShader, Shader } from "./gc-entities/Shader";
+import { Camera } from "./gc-entities/Camera";
+import { Shader } from "./gc-entities/Shader";
 import { Texture } from "./gc-entities/Texture";
 import { Mesh } from "./gc-entities/Mesh";
 import { SceneObject } from "./gc-entities/SceneObject";
+import { DirectionalLight } from "./gc-entities/Lights/DirectionalLight";
+import { AmbientLight } from "./gc-entities/Lights/AmbientLight";
 
 export default () => {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -104,10 +106,124 @@ export default () => {
   );
 };
 
+const vertexShaderSource = `#version 300 es
+in vec3 in_position;
+in vec2 in_uv;
+in vec3 in_normal;
+        
+out vec2 out_uv; // send uv to fragment shader
+out vec3 out_normal; // send normal to fragment shader
+out vec3 out_word_pos; // send word to fragment shader
+out vec3 out_word_normal; // send word to fragment shader
+        
+uniform mat4 u_projection;
+uniform mat4 u_view;
+uniform mat4 u_model;
+        
+vec4 snap(vec4 vertex, vec2 resolution) // Emulates playstation 1 float imprecision
+{
+    vec4 snappedPos = vertex;
+    snappedPos.xyz = vertex.xyz / vertex.w; // convert to normalised device coordinates (NDC)
+    snappedPos.xy = floor(resolution * snappedPos.xy) / resolution; // snap the vertex to the lower-resolution grid
+    snappedPos.xyz *= vertex.w; // convert back to projection-space
+    return snappedPos;
+}
+
+
+void main() {
+    //vec4 word = u_model * vec4(in_position, 1.0);
+    //vec4 view = u_projection * u_view;
+    //vec4 pos = view * word;
+    //gl_Position = pos; 
+
+    vec2 resolution = vec2(50.0, 50.0);
+
+    vec4 pos = u_projection * u_view * u_model * vec4(in_position, 1.0);
+    gl_Position = snap(pos, resolution);
+
+    vec4 word = u_model * vec4(in_position, 1.0);
+            
+    out_word_pos = word.xyz;
+    out_uv = in_uv;
+    out_normal = mat3(u_model) * in_normal;
+}
+`;
+
+const fragmentShaderSource = `#version 300 es
+precision highp float;
+
+struct DirectionalLight {
+    vec3 direction;
+    vec3 color;
+};
+        
+in vec2 out_uv; // receive uv from vertex shader
+in vec3 out_normal; // receive normal from vertex shader
+in vec3 out_word_pos; // receive word from vertex shader
+
+ out vec4 color; // send color to the gpu to be rendered
+        
+uniform sampler2D in_texture; // select texture slot
+uniform DirectionalLight u_directionalLight;
+
+// Create a step function that will clamp the light value to a certain number of steps
+float lightStepClamp(float light,int steps) {
+    float step = 1.0 / float(steps);
+    float lightStep = step * floor(light / step);
+    return lightStep;
+}
+
+
+void main() {
+    vec3 face_normal = normalize(out_normal);
+    vec3 light_dir = normalize(u_directionalLight.direction);
+    // directional light
+    float light = max(dot(face_normal, light_dir), 0.0);
+    light = lightStepClamp(light,5);
+    
+    vec2 uv = out_uv;
+
+    //color = texture(in_texture, out_uv).rgba;
+    color = texture(in_texture, uv).rgba;
+
+    color.rgb *= light + vec3(0.2, 0.2, 0.2);
+}
+`;
+
+class Scene {
+  objects: SceneObject[] = [];
+  directionalLight: DirectionalLight;
+  lightsShader: Shader;
+  constructor(lightShader: Shader) {
+    this.directionalLight = new DirectionalLight(
+      glM.vec3.fromValues(0, 0, 1),
+      glM.vec3.fromValues(1, 1, 1)
+    );
+    this.lightsShader = lightShader;
+  }
+  add(obj: SceneObject) {
+    this.objects.push(obj);
+  }
+
+  draw() {
+    for (const obj of this.objects) {
+      obj.draw();
+    }
+    const shader = this.lightsShader;
+    shader.use((program) => {
+      shader.setUniformDirectionalLight(
+        "u_directionalLight",
+        this.directionalLight
+      );
+    });
+  }
+}
+
 class Render {
   canvas: HTMLCanvasElement;
   gl: WebGL2RenderingContext;
   camera: Camera;
+  scene: Scene;
 
   renderFunc: () => void;
   constructor(canvas: HTMLCanvasElement) {
@@ -125,46 +241,23 @@ class Render {
     this.gl.enable(this.gl.DEPTH_TEST);
     this.gl.depthFunc(this.gl.LEQUAL);
 
+    // z buffer,
+    this.gl.clearDepth(1.0);
+    this.gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
     // enable alpha blending
     this.gl.enable(this.gl.BLEND);
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA); // this allows us to have transparent textures
 
-    // wireframe mode
-    //this.gl.polygonMode(this.gl.FRONT_AND_BACK, this.gl.LINE);
+    // face culling
+    //gl.enable(gl.CULL_FACE);
+    //gl.cullFace(gl.FRONT);
 
-    this.camera = createDefaultCamera(
+    this.camera = Camera.createIsometricCamera(
       this.gl.canvas.width,
       this.gl.canvas.height
     );
-
-    const vertexShaderSource = `#version 300 es
-        in vec3 in_position;
-        in vec2 in_uv;
-        
-        out vec2 out_uv; // send uv to fragment shader
-        
-        uniform mat4 u_projection;
-        uniform mat4 u_view;
-        uniform mat4 u_model;
-        
-        void main() {
-            gl_Position = u_projection * u_view * u_model * vec4(in_position, 1.0);
-            out_uv = in_uv;
-        }
-        `;
-
-    const fragmentShaderSource = `#version 300 es
-        precision highp float;
-        in vec2 out_uv; // receive uv from vertex shader
-        out vec4 color; // send color to the gpu to be rendered
-        // texture
-        uniform sampler2D in_texture; // select texture slot
-        void main() {
-            color = texture(in_texture, out_uv); // sample texture
-        }
-        `;
-
-    const shader = createShader(
+    const shader = Shader.createShader(
       this.gl,
       vertexShaderSource,
       fragmentShaderSource
@@ -212,42 +305,65 @@ class Render {
     };
     resizeCanvas();
 
-    const texturePng = new Texture(this.gl, "/textures/wall.png");
-    const textureJpg = new Texture(this.gl, "/textures/test.jpg");
-    const textureTranparent = new Texture(
+    const texturePng = Texture.loadTexture(
+      this.gl,
+      "/textures/wall.png",
+      "image",
+      true,
+      false
+    );
+    const textureJpg = Texture.loadTexture(
+      this.gl,
+      "/textures/test.jpg",
+      "image",
+      true,
+      false
+    );
+    const textureTranparent = Texture.loadTexture(
       this.gl,
       "/textures/glass.png",
-      "transparent"
+      "transparent",
+      true,
+      false
     );
 
-    const sceneObjects = [] as SceneObject[];
+    const spyroTexture = Texture.loadTexture(
+        this.gl,
+        "/textures/Glimmer_ObjectTextures.png",
+        "transparent",
+        true,
+        false
+    );
 
-    Array.from({ length: 100 }).forEach((_, i) => {
+    this.scene = new Scene(shader);
+
+    Array.from({ length: 1 }).forEach(async (_, i) => {
       const oPosition = glM.vec3.fromValues(
-        Math.random() * 10 - 5,
-        Math.random() * 10 - 5,
-        Math.random() * 10 - 5
+        0,//Math.random() * 50 - 5,
+        0,//Math.random() * 50 - 5,
+        0,//Math.random() * 50 - 5
       );
       const oRotation = glM.vec3.fromValues(
-        Math.random() * 360,
-        Math.random() * 360,
-        Math.random() * 360
+        0,//Math.random() * 360,
+        0,//Math.random() * 360,
+        0,//Math.random() * 360
       );
-      const oScale = glM.vec3.fromValues(1, 1, 1);
+      const rScale = 1;//Math.random() * 5;
+
+      const oScale = glM.vec3.fromValues(rScale, rScale, rScale);
 
       // pick random mesh and texture from Mesh.createSphere, Mesh.createCube and Mesh.createPlane
 
-        const texture = [
-        texturePng,
-        textureJpg,
-        textureTranparent,
-        ][Math.floor(Math.random() * 3)];
+      const texture = [textureTranparent, texturePng, textureJpg][
+        Math.floor(Math.random() * 3)
+      ];
 
       const mesh = [
-        Mesh.createSphere(this.gl, 1, 32, 32, texture, shader),
-        Mesh.createCube(this.gl, 1, 1, 1, texture, shader),
-        Mesh.createPlane(this.gl, 1, 1, texture, shader),
-      ][Math.floor(Math.random() * 3)];
+        await  Mesh.LoadOBJ(this.gl, "spyro.obj", spyroTexture),
+        //Mesh.createSphere(this.gl, 1, 8, 8, texture),
+        //Mesh.createCube(this.gl, 1, 1, 1, texture),
+        //Mesh.createPlane(this.gl, 1, 1, texture),
+      ][Math.floor(Math.random() * 1)];
 
       const sceneObject = new SceneObject(
         mesh,
@@ -256,13 +372,20 @@ class Render {
         oRotation,
         oScale
       );
-      sceneObjects.push(sceneObject);
+      this.scene.add(sceneObject);
     });
 
     // resize canvas
     window.addEventListener("resize", resizeCanvas);
     const renderFunc = () => {
       updateCamera();
+
+      // move the directional light in a circle around the scene
+      this.scene.directionalLight.direction = glM.vec3.fromValues(
+        parseFloat(Math.sin(Date.now() / 1000).toFixed(1)),
+        parseFloat(Math.cos(Date.now() / 1000).toFixed(1)),
+        parseFloat(Math.sin(Date.now() / 1000).toFixed(1))
+      );
 
       //this.gl.clearColor(background.r, background.g, background.b, 1);
       shader.use((program) => {
@@ -271,13 +394,10 @@ class Render {
       });
 
       this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-      background.r = Math.sin(Date.now() / 1000) / 2 + 0.5;
-      background.g = Math.cos(Date.now() / 1000) / 4 - 0.5;
-      background.b = Math.sin(Date.now() / 1000) / 6 + 0.5;
 
-      sceneObjects.forEach((sceneObject) => {
-        sceneObject.draw();
-      });
+      this.gl.clearColor(background.r, background.g, background.b, 1);
+
+      this.scene.draw();
     };
     this.renderFunc = renderFunc;
   }

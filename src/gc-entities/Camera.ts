@@ -115,6 +115,12 @@ export class Camera {
     this.far = far;
     this.updateProjectionMatrix();
   }
+
+  public updateProjectionMatrixFov(fov: number) {
+    this.fov = fov;
+    this.updateProjectionMatrix();
+  }
+
   public updateProjectionMatrixAspect(width: number, height: number) {
     this.width = width;
     this.height = height;
@@ -135,12 +141,15 @@ export class Camera {
   }
   setPosition(position: glM.vec3) {
     this.position = position;
+    this.updateCameraVectors();
   }
   setYaw(yaw: number) {
     this.yaw = yaw;
+    this.updateCameraVectors();
   }
   setPitch(pitch: number) {
     this.pitch = pitch;
+    this.updateCameraVectors();
   }
 
   processKeyboard(keys: keysType) {
@@ -186,6 +195,11 @@ export class Camera {
         this.position,
         glM.vec3.scale(glM.vec3.create(), this.up, velocity)
       );
+    }
+    if (keys["j"]) {
+      // print camera position rotation on key press
+      console.log("Camera position: " + this.position);
+      console.log("yaw:" + this.yaw + " pitch:" + this.pitch);
     }
   }
   processMouseMovement(

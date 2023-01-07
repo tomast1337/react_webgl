@@ -279,7 +279,8 @@ export class Mesh {
     radius: number,
     slices: number,
     stacks: number,
-    texture: Texture
+    texture: Texture,
+    invertNormals: boolean = false
   ) {
     let latitude = 0;
     let longitude = 0;
@@ -304,10 +305,10 @@ export class Mesh {
         let u = 1 - j / slices;
         let v = 1 - i / stacks;
 
-        normals.push(-x);
-        normals.push(-y);
-        normals.push(-z);
-        tex_coords.push(u);
+        normals.push(invertNormals ? x : -x);
+        normals.push(invertNormals ? y : -y);
+        normals.push(invertNormals ? z : -z);
+        tex_coords.push(-u);
         tex_coords.push(v);
         vertices.push(radius * x);
         vertices.push(radius * y);

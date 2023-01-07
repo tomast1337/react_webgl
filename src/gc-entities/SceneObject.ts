@@ -58,17 +58,17 @@ export class SceneObject {
     this.updateModelMatrix();
   }
 
-  translateObjcet(translation: glM.vec3) {
+  translateObject(translation: glM.vec3) {
     glM.vec3.add(this.position, this.position, translation);
     this.updateModelMatrix();
   }
 
-  rotateObjcet(rotation: glM.vec3) {
+  rotateObject(rotation: glM.vec3) {
     glM.vec3.add(this.rotation, this.rotation, rotation);
     this.updateModelMatrix();
   }
 
-  scaleObjcet(scale: glM.vec3) {
+  scaleObject(scale: glM.vec3) {
     glM.vec3.mul(this.scale, this.scale, scale);
     this.updateModelMatrix();
   }

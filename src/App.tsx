@@ -7,7 +7,6 @@ import { Texture } from "./gc-entities/Texture";
 import { Mesh } from "./gc-entities/Mesh";
 import { SceneObject } from "./gc-entities/SceneObject";
 import { DirectionalLight } from "./gc-entities/Lights/DirectionalLight";
-import { AmbientLight } from "./gc-entities/Lights/AmbientLight";
 
 export default () => {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -29,6 +28,29 @@ export default () => {
 
   return (
     <>
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          zIndex: 1,
+          backgroundColor: "rgba(255, 255, 255, 0.5)",
+          padding: "10px",
+          whiteSpace: "pre-wrap",
+          fontFamily: "monospace",
+        }}
+      >
+        <h1>Instructions</h1>
+        {`Use the mouse to move the camera
+Press ESC to unlock the mouse
+
+Use 
+
+  W 
+A S D 
+
+to move the camera`}
+      </div>
       <canvas
         style={{
           width: "100%",
@@ -39,74 +61,45 @@ export default () => {
         }}
         ref={canvasRef}
       />
-      <div
-        style={{
-          margin: "auto",
-          width: "50%",
-          padding: "10px",
-          backgroundColor: "rgba(255, 255, 255, 0.5)",
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          zIndex: -1,
-        }}
-      >
-        <p>
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi rhoncus
-          aliquam dapibus. Sed eget feugiat nunc. Nullam vel faucibus ipsum.
-          Proin at diam turpis. Mauris semper sapien lacus, a imperdiet orci
-          pellentesque pharetra. Cras mi libero, pellentesque sit amet elit eu,
-          congue molestie nisi. Suspendisse potenti. Pellentesque venenatis eget
-          tortor nec feugiat. Pellentesque eu dolor felis. Aenean malesuada at
-          ligula id condimentum. Curabitur egestas turpis ut fermentum
-          sollicitudin. Vestibulum tincidunt diam nec varius congue.
-        </p>
-        <p>
-          Vivamus euismod, odio in blandit fringilla, est ex feugiat magna, sed
-          molestie urna tortor at orci. Vivamus a pretium neque, in ultrices
-          tortor. Proin malesuada nunc leo. Ut sit amet leo non ipsum semper
-          pulvinar. Nullam pharetra, lacus ut euismod vestibulum, ex nulla
-          pretium elit, ac bibendum metus odio finibus purus. Nulla quis dui at
-          odio molestie vehicula ut non nunc. Donec vulputate purus erat, sit
-          amet pharetra augue vestibulum et.
-        </p>
-        <p>
-          Duis congue faucibus finibus. Integer ante lacus, semper tempor massa
-          aliquam, viverra suscipit dolor. Donec ultrices sapien velit, et
-          maximus mi suscipit id. Morbi lobortis mi ex, vitae tempus quam
-          hendrerit nec. Aenean viverra volutpat nulla, non pellentesque lectus
-          congue vitae. Proin mattis, nisi sed porttitor suscipit, lorem massa
-          ultrices justo, eget vulputate quam odio sagittis risus. Proin
-          feugiat, ex vel accumsan hendrerit, nunc diam maximus mi, non lobortis
-          odio orci et libero. Fusce luctus accumsan lectus, a faucibus turpis
-          sodales a. Donec ullamcorper justo turpis, et hendrerit metus interdum
-          venenatis. In interdum et lacus ornare sagittis.
-        </p>
-        <p>
-          Sed sit amet aliquet sem. Cras tristique dui a urna viverra luctus.
-          Etiam eleifend magna eget lorem sodales suscipit at a lacus. Integer
-          ac nisl ut nunc interdum ultricies ac ut nisl. Orci varius natoque
-          penatibus et magnis dis parturient montes, nascetur ridiculus mus.
-          Maecenas eleifend sem id massa laoreet ultricies. Donec quis interdum
-          nunc, quis posuere nulla. Etiam sed tortor at mauris suscipit
-          interdum. Vestibulum luctus nunc at risus viverra condimentum vitae ac
-          purus.
-        </p>
-        <p>
-          Maecenas nec placerat tellus. Cras hendrerit pharetra tellus vel
-          finibus. Praesent fermentum elit vel nibh faucibus, et rutrum eros
-          congue. Suspendisse facilisis mattis turpis, eget commodo lectus
-          interdum ut. Ut metus tellus, convallis vel porttitor a, pellentesque
-          at mi. Pellentesque eu ornare neque. Vestibulum ante ipsum primis in
-          faucibus orci luctus et ultrices posuere cubilia curae;
-        </p>
-      </div>
     </>
   );
 };
 
-const vertexShaderSource = `#version 300 es
+const skyDomePipeline = {
+  vertexShaderSource: `#version 300 es
+in vec3 in_position;
+in vec2 in_uv;
+in vec3 in_normal;
+
+out vec2 out_uv; // send uv to fragment shader
+
+uniform mat4 u_projection;
+uniform mat4 u_view;
+uniform mat4 u_model;
+
+void main() {
+    out_uv = in_uv;
+    gl_Position = u_projection * u_view * u_model * vec4(in_position, 1.0);
+}
+`,
+
+  fragmentShaderSource: `#version 300 es
+precision highp float;
+
+in vec2 out_uv; // receive uv from vertex shader
+
+out vec4 out_color; // send color to screen
+
+uniform sampler2D u_texture;
+
+void main() {
+    out_color = texture(u_texture, out_uv);
+}
+`,
+};
+
+const ps1Pipeline = {
+  vertexShaderSource: `#version 300 es
 in vec3 in_position;
 in vec2 in_uv;
 in vec3 in_normal;
@@ -120,12 +113,12 @@ uniform mat4 u_projection;
 uniform mat4 u_view;
 uniform mat4 u_model;
         
-vec4 snap(vec4 vertex, vec2 resolution) // Emulates playstation 1 float imprecision
+vec4 snap(vec4 vertexPos, vec2 resolution) // Emulates playstation 1 float imprecision
 {
-    vec4 snappedPos = vertex;
-    snappedPos.xyz = vertex.xyz / vertex.w; // convert to normalised device coordinates (NDC)
+    vec4 snappedPos = vertexPos;
+    snappedPos.xyz = vertexPos.xyz / vertexPos.w; // convert to normalised device coordinates (NDC)
     snappedPos.xy = floor(resolution * snappedPos.xy) / resolution; // snap the vertex to the lower-resolution grid
-    snappedPos.xyz *= vertex.w; // convert back to projection-space
+    snappedPos.xyz *= vertexPos.w; // convert back to projection-space
     return snappedPos;
 }
 
@@ -136,7 +129,7 @@ void main() {
     //vec4 pos = view * word;
     //gl_Position = pos; 
 
-    vec2 resolution = vec2(50.0, 50.0);
+    vec2 resolution = vec2(250.0, 250.0);
 
     vec4 pos = u_projection * u_view * u_model * vec4(in_position, 1.0);
     gl_Position = snap(pos, resolution);
@@ -147,9 +140,8 @@ void main() {
     out_uv = in_uv;
     out_normal = mat3(u_model) * in_normal;
 }
-`;
-
-const fragmentShaderSource = `#version 300 es
+`,
+  fragmentShaderSource: `#version 300 es
 precision highp float;
 
 struct DirectionalLight {
@@ -188,7 +180,8 @@ void main() {
 
     color.rgb *= light + vec3(0.2, 0.2, 0.2);
 }
-`;
+`,
+};
 
 class Scene {
   objects: SceneObject[] = [];
@@ -253,14 +246,32 @@ class Render {
     //gl.enable(gl.CULL_FACE);
     //gl.cullFace(gl.FRONT);
 
-    this.camera = Camera.createIsometricCamera(
+    this.camera = Camera.createDefaultCamera(
       this.gl.canvas.width,
       this.gl.canvas.height
     );
-    const shader = Shader.createShader(
+
+    this.camera.updateProjectionMatrixFov(90);
+
+    this.camera.setPosition(
+      glM.vec3.fromValues(
+        4.493191719055176,
+        6.700974464416504,
+        -21.64906883239746
+      )
+    );
+    this.camera.setPitch(-16);
+    this.camera.setYaw(460);
+    const shaderPS1 = Shader.createShader(
       this.gl,
-      vertexShaderSource,
-      fragmentShaderSource
+      ps1Pipeline.vertexShaderSource,
+      ps1Pipeline.fragmentShaderSource
+    );
+
+    const skyDomeShader = Shader.createShader(
+      this.gl,
+      skyDomePipeline.vertexShaderSource,
+      skyDomePipeline.fragmentShaderSource
     );
 
     const background = {
@@ -305,97 +316,130 @@ class Render {
     };
     resizeCanvas();
 
-    const texturePng = Texture.loadTexture(
+    const starsTexture = Texture.loadTexture(
       this.gl,
-      "/textures/wall.png",
+      "/textures/Stars.jpeg",
       "image",
       true,
       false
     );
-    const textureJpg = Texture.loadTexture(
+
+    const earthTexture = Texture.loadTexture(
       this.gl,
-      "/textures/test.jpg",
+      "/textures/earth.jpg",
       "image",
       true,
       false
     );
-    const textureTranparent = Texture.loadTexture(
+
+    const moonTexture = Texture.loadTexture(
       this.gl,
-      "/textures/glass.png",
-      "transparent",
+      "/textures/moon.jpg",
+      "image",
       true,
       false
     );
 
-    const spyroTexture = Texture.loadTexture(
-        this.gl,
-        "/textures/Glimmer_ObjectTextures.png",
-        "transparent",
-        true,
-        false
+    // sky dome
+    const skyDome = new SceneObject(
+      Mesh.createSphere(this.gl, 100, 8, 8, starsTexture, true),
+      skyDomeShader,
+      glM.vec3.fromValues(0, 0, 0),
+      glM.vec3.fromValues(0, 0, 0),
+      glM.vec3.fromValues(1, 1, 1)
     );
 
-    this.scene = new Scene(shader);
+    // earth
+    const earth = new SceneObject(
+      Mesh.createSphere(this.gl, 1, 8, 8, earthTexture),
+      shaderPS1,
+      glM.vec3.fromValues(0, 0, 0),
+      glM.vec3.fromValues(0, 0, 0),
+      glM.vec3.fromValues(1, 1, 1)
+    );
+    earth.setPosition(glM.vec3.fromValues(0, 0, 0));
+    earth.setScale(glM.vec3.fromValues(2, 2, 2));
+    earth.setRotation(glM.vec3.fromValues(180, 0, 0));
 
-    Array.from({ length: 1 }).forEach(async (_, i) => {
-      const oPosition = glM.vec3.fromValues(
-        0,//Math.random() * 50 - 5,
-        0,//Math.random() * 50 - 5,
-        0,//Math.random() * 50 - 5
-      );
-      const oRotation = glM.vec3.fromValues(
-        0,//Math.random() * 360,
-        0,//Math.random() * 360,
-        0,//Math.random() * 360
-      );
-      const rScale = 1;//Math.random() * 5;
+    // moon
+    const moon = new SceneObject(
+      Mesh.createSphere(this.gl, 1, 8, 8, moonTexture),
+      shaderPS1,
+      glM.vec3.fromValues(0, 0, 0),
+      glM.vec3.fromValues(0, 0, 0),
+      glM.vec3.fromValues(1, 1, 1)
+    );
+    moon.setPosition(glM.vec3.fromValues(0, 0, 0));
+    moon.setScale(glM.vec3.fromValues(0.5, 0.5, 0.5));
 
-      const oScale = glM.vec3.fromValues(rScale, rScale, rScale);
+    // get moon orbit
+    const moonOrbit = (time: number): glM.vec3 => {
+      const x = Math.cos(time) * 5;
+      const y = 0;
+      const z = Math.sin(time) * 5;
+      return glM.vec3.fromValues(x, y, z);
+    };
 
-      // pick random mesh and texture from Mesh.createSphere, Mesh.createCube and Mesh.createPlane
-
-      const texture = [textureTranparent, texturePng, textureJpg][
-        Math.floor(Math.random() * 3)
-      ];
-
-      const mesh = [
-        await  Mesh.LoadOBJ(this.gl, "spyro.obj", spyroTexture),
-        //Mesh.createSphere(this.gl, 1, 8, 8, texture),
-        //Mesh.createCube(this.gl, 1, 1, 1, texture),
-        //Mesh.createPlane(this.gl, 1, 1, texture),
-      ][Math.floor(Math.random() * 1)];
-
-      const sceneObject = new SceneObject(
-        mesh,
-        shader,
-        oPosition,
-        oRotation,
-        oScale
-      );
-      this.scene.add(sceneObject);
-    });
+    this.scene = new Scene(shaderPS1);
 
     // resize canvas
     window.addEventListener("resize", resizeCanvas);
     const renderFunc = () => {
       updateCamera();
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+      this.gl.clearColor(background.r, background.g, background.b, 1);
 
-      // move the directional light in a circle around the scene
-      this.scene.directionalLight.direction = glM.vec3.fromValues(
-        parseFloat(Math.sin(Date.now() / 1000).toFixed(1)),
-        parseFloat(Math.cos(Date.now() / 1000).toFixed(1)),
-        parseFloat(Math.sin(Date.now() / 1000).toFixed(1))
+      // sky dome
+      // move de sky dome to the camera position
+      skyDome.setPosition(this.camera.position);
+      // rotate the sky dome to the camera rotation
+      let currentRotation = skyDome.rotation;
+      skyDome.setRotation(
+        glM.vec3.fromValues(
+          currentRotation[0],
+          currentRotation[1] + 0.001,
+          currentRotation[2]
+        )
       );
-
-      //this.gl.clearColor(background.r, background.g, background.b, 1);
-      shader.use((program) => {
-        shader.setUniformMat4("u_projection", this.camera.projectionMatrix);
-        shader.setUniformMat4("u_view", this.camera.viewMatrix);
+      // draw the sky dome
+      skyDomeShader.use((program) => {
+        skyDomeShader.setUniformMat4(
+          "u_projection",
+          this.camera.projectionMatrix
+        );
+        skyDomeShader.setUniformMat4("u_view", this.camera.viewMatrix);
+        // bind the sky dome texture
+        skyDomeShader.setUniformTexture("u_texture", skyDome.mesh.texture, 0);
+        skyDome.draw();
       });
 
-      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+      // earth
+      const currentEarthRotation = earth.rotation;
+      earth.setRotation(
+        glM.vec3.fromValues(
+          currentEarthRotation[0],
+          currentEarthRotation[1] - 0.05,
+          currentEarthRotation[2]
+        )
+      );
+      earth.draw();
 
-      this.gl.clearColor(background.r, background.g, background.b, 1);
+      // moon
+      const currentMoonRotation = moon.rotation;
+      moon.setPosition(moonOrbit(Date.now() * 0.001));
+      moon.setRotation(
+        glM.vec3.fromValues(
+          currentMoonRotation[0],
+          currentMoonRotation[1] - 0.01,
+          currentMoonRotation[2]
+        )
+      );
+      moon.draw();
+
+      shaderPS1.use((program) => {
+        shaderPS1.setUniformMat4("u_projection", this.camera.projectionMatrix);
+        shaderPS1.setUniformMat4("u_view", this.camera.viewMatrix);
+      });
 
       this.scene.draw();
     };

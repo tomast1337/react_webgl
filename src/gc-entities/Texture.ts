@@ -3,6 +3,7 @@ export type TextureType = "image" | "transparent";
 export class Texture {
   gl: WebGL2RenderingContext;
   texture: WebGLTexture;
+  id: number;
   constructor(
     gl: WebGL2RenderingContext,
     imagePath: string,

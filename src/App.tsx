@@ -10,9 +10,10 @@ import { DirectionalLight } from "./gc-entities/Lights/DirectionalLight";
 
 export default () => {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const debugDivRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
-    if (canvasRef.current) {
-      const render = new Render(canvasRef.current);
+    if (canvasRef.current && debugDivRef.current) {
+      const render = new Render(canvasRef.current, debugDivRef.current);
       render.render();
     }
   }, [canvasRef]);
@@ -33,8 +34,8 @@ export default () => {
           position: "fixed",
           top: 0,
           left: 0,
-          zIndex: 1,
-          backgroundColor: "rgba(255, 255, 255, 0.5)",
+          zIndex: 2,
+          backgroundColor: "rgba(255, 255, 255, 0.25)",
           padding: "10px",
           whiteSpace: "pre-wrap",
           fontFamily: "monospace",
@@ -51,6 +52,18 @@ A S D
 
 to move the camera`}
       </div>
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          zIndex: 2,
+          backgroundColor: "rgba(255, 255, 255, 0.0)",
+          width: "100%",
+          height: "100%",
+        }}
+        ref={debugDivRef}
+      />
       <canvas
         style={{
           width: "100%",
@@ -217,11 +230,15 @@ class Render {
   gl: WebGL2RenderingContext;
   camera: Camera;
   scene: Scene;
-
+  debugDivRef: HTMLDivElement;
   renderFunc: () => void;
-  constructor(canvas: HTMLCanvasElement) {
+
+  constructor(canvas: HTMLCanvasElement, debugDivRef: HTMLDivElement) {
+    this.debugDivRef = debugDivRef;
+
     this.canvas = canvas;
     if (!canvas.getContext("webgl2")) {
+      // print error
       throw new Error("WebGL2 not supported");
     }
     const gl = canvas.getContext("webgl2");
@@ -287,9 +304,9 @@ class Render {
 
     // update gyroscope position
     window.addEventListener("deviceorientation", (e) => {
-        if (e.alpha === null || e.beta === null || e.gamma === null) {
-            return;
-        } 
+      if (e.alpha === null || e.beta === null || e.gamma === null) {
+        return;
+      }
 
       this.camera.processGyroscopeMovement(e.alpha, e.beta, e.gamma);
     });
@@ -299,24 +316,24 @@ class Render {
     let lastX = 0;
     let lastY = 0;
     this.canvas.addEventListener("touchstart", (e) => {
-        fingerDown = true;
-        lastX = e.touches[0].clientX;
-        lastY = e.touches[0].clientY;
+      fingerDown = true;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
     });
     this.canvas.addEventListener("touchmove", (e) => {
-        if (!fingerDown) {
-            return;
-        }
-        const x = e.touches[0].clientX;
-        const y = e.touches[0].clientY;
-        const dx = x - lastX;
-        const dy = y - lastY;
-        this.camera.processMouseMovement(dx, dy);
-        lastX = x;
-        lastY = y;
+      if (!fingerDown) {
+        return;
+      }
+      const x = e.touches[0].clientX;
+      const y = e.touches[0].clientY;
+      const dx = x - lastX;
+      const dy = y - lastY;
+      this.camera.processMouseMovement(dx, dy);
+      lastX = x;
+      lastY = y;
     });
     this.canvas.addEventListener("touchend", (e) => {
-        fingerDown = false;
+      fingerDown = false;
     });
 
     // update keyboard
@@ -388,7 +405,7 @@ class Render {
     );
     earth.setPosition(glM.vec3.fromValues(0, 0, 0));
     earth.setScale(glM.vec3.fromValues(2, 2, 2));
-    earth.setRotation(glM.vec3.fromValues(180, 0, 0));
+    earth.setRotation(glM.vec3.fromValues(180-20, 0, 0));
 
     // moon
     const moon = new SceneObject(
@@ -403,13 +420,82 @@ class Render {
 
     // get moon orbit
     const moonOrbit = (time: number): glM.vec3 => {
-      const x = Math.cos(time) * 5;
+        const r = 20;
+      const x = Math.cos(time) * r;
       const y = 0;
-      const z = Math.sin(time) * 5;
+      const z = Math.sin(time) * r;
       return glM.vec3.fromValues(x, y, z);
     };
 
     this.scene = new Scene(shaderPS1);
+
+    const printInfoinDebugDiv = () => {
+      const debugDiv = this.debugDivRef;
+      // clear debug div
+      debugDiv.innerHTML = "";
+
+      const earthText = `A Terra é o terceiro planeta mais próximo do Sol e é o único conhecido por abrigar a vida. Ela tem aproximadamente 12.742 km de diâmetro e é composta principalmente por rochas e metais. A Terra tem uma atmosfera rica em oxigênio e é coberta por água em cerca de 70% de sua superfície. A vida na Terra surgiu há cerca de 3,8 bilhões de anos e evoluiu em muitas formas diferentes. A Terra é o lar de milhões de espécies de plantas e animais e é habitada por cerca de 7,9 bilhões de pessoas.`;
+      const earthPosition = earth.position;
+
+      const moonText = `A Lua é o satélite natural da Terra, composto principalmente por rochas e pó. Ela foi formada há cerca de 4,5 bilhões de anos e orbita a Terra a cada 27,3 dias. A Lua tem um impacto significativo na Terra, afetando a maré e o ciclo de dias e noites. Ela também foi visitada por humanos durante as missões Apollo da NASA.`;
+      const moonPosition = moon.position;
+      const cameraPosition = this.camera.position;
+
+      const earthPixelPosition = this.camera.worldToPixelPos(earthPosition);
+      const moonPixelPosition = this.camera.worldToPixelPos(moonPosition);
+
+      const createInfoDiv = (
+        text: string,
+        title: string,
+        pixelPosition: glM.vec3
+      ) => {
+        const x = pixelPosition[0] - 150;
+        const y = pixelPosition[1] + 100;
+        const z = pixelPosition[2];
+        // scale factor
+        const zFactor = 1 / z + 1;z
+        const fontSize = 7 * zFactor;
+        const divDimension = 150 * zFactor;
+        const divElement = document.createElement("div");
+        divElement.style.position = "absolute";
+        divElement.style.color = "white";
+        divElement.style.fontFamily = "Arial";
+        divElement.style.transform = `translate(${x}px, ${y}px)`;
+        divElement.style.width = `${divDimension}px`;
+        divElement.style.zIndex = `${z}`;
+        divElement.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+        divElement.style.borderRadius = "20px";
+        divElement.style.padding = "10px";
+
+        // if (z is behind camera display none)
+        if (z < 0) {
+            divElement.style.display = "none";
+        }
+
+        const headerElement = document.createElement("h1");
+        headerElement.innerText = title;
+        headerElement.style.fontSize = `${fontSize*1.25}px`
+        headerElement.style.fontWeight = "bold";
+        headerElement.style.display = "inline-block";
+        headerElement.style.textAlign = "center";
+        divElement.appendChild(headerElement);
+
+        const textElement = document.createElement("p");
+        textElement.innerText = text;
+        textElement.style.fontSize = `${fontSize}px`
+        textElement.style.fontWeight = "bold";
+        textElement.style.display = "inline-block";
+        textElement.style.textAlign = "justify";
+        divElement.appendChild(textElement);
+
+        return divElement;
+      };
+
+      debugDiv.appendChild(
+        createInfoDiv(earthText, "Terra", earthPixelPosition)
+      );
+      debugDiv.appendChild(createInfoDiv(moonText, "Lua", moonPixelPosition));
+    };
 
     // resize canvas
     window.addEventListener("resize", resizeCanvas);
@@ -455,7 +541,7 @@ class Render {
 
       // moon
       const currentMoonRotation = moon.rotation;
-      moon.setPosition(moonOrbit(Date.now() * 0.001));
+      moon.setPosition(moonOrbit(Date.now() * 0.0001));
       moon.setRotation(
         glM.vec3.fromValues(
           currentMoonRotation[0],
@@ -471,9 +557,11 @@ class Render {
       });
 
       this.scene.draw();
+      printInfoinDebugDiv();
     };
     this.renderFunc = renderFunc;
   }
+
   render() {
     this.renderFunc();
     requestAnimationFrame(this.render.bind(this));

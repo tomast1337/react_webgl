@@ -231,6 +231,35 @@ export class Camera {
     this.updateCameraVectors();
   }
 
+  worldToPixelPos(earthPosition: glM.vec3) {
+    // converte no mundo para pixel na tela
+    const viewMatrix = this.viewMatrix;
+    const projectionMatrix = this.projectionMatrix;
+    const worldPos = earthPosition;
+    const worldPos4 = glM.vec4.fromValues(
+        worldPos[0],
+        worldPos[1],
+        worldPos[2],
+        1
+      ),
+      viewPos4 = glM.vec4.create(),
+      clipPos4 = glM.vec4.create(),
+      ndcPos = glM.vec3.create(),
+      pixelPos = glM.vec3.create();
+
+    glM.vec4.transformMat4(viewPos4, worldPos4, viewMatrix);
+    glM.vec4.transformMat4(clipPos4, viewPos4, projectionMatrix);
+    // 1 to -1 position in de NDC, ndc stands for normalized device coordinates
+    ndcPos[0] = clipPos4[0] / clipPos4[3];
+    ndcPos[1] = clipPos4[1] / clipPos4[3];
+    ndcPos[2] = clipPos4[2] / clipPos4[3];
+    // 0 to 1 position in the screen
+    pixelPos[0] = (ndcPos[0] + 1) / 2 * this.width;
+    pixelPos[1] = (1 - ndcPos[1]) / 2 * this.height;
+    pixelPos[2] = ndcPos[2];
+    return pixelPos;
+  }
+
   // Static methods
   static createDefaultCamera = (width: number, height: number) => {
     return new Camera(

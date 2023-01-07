@@ -2,6 +2,12 @@ import * as glM from "gl-matrix";
 import { keysType } from "./index";
 
 export class Camera {
+  processGyroscopeMovement(alpha: number, beta: number, gamma: number) {
+    const sensitivity = 0.1;
+    this.yaw += gamma * sensitivity;
+    this.pitch += beta * sensitivity;
+    this.updateCameraVectors();
+  }
   //A posição da câmera no espaço.
   public position: glM.vec3;
   //A direção "para cima" do mundo.

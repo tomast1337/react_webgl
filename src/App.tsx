@@ -280,14 +280,43 @@ class Render {
       b: 0,
     };
 
-    const mouse = {
-      x: 0,
-      y: 0,
-    };
-
     // update mouse position
     this.canvas.addEventListener("mousemove", (e) => {
       this.camera.processMouseMovement(e.movementX, e.movementY);
+    });
+
+    // update gyroscope position
+    window.addEventListener("deviceorientation", (e) => {
+        if (e.alpha === null || e.beta === null || e.gamma === null) {
+            return;
+        } 
+
+      this.camera.processGyroscopeMovement(e.alpha, e.beta, e.gamma);
+    });
+
+    // finge drag to move camera
+    let fingerDown = false;
+    let lastX = 0;
+    let lastY = 0;
+    this.canvas.addEventListener("touchstart", (e) => {
+        fingerDown = true;
+        lastX = e.touches[0].clientX;
+        lastY = e.touches[0].clientY;
+    });
+    this.canvas.addEventListener("touchmove", (e) => {
+        if (!fingerDown) {
+            return;
+        }
+        const x = e.touches[0].clientX;
+        const y = e.touches[0].clientY;
+        const dx = x - lastX;
+        const dy = y - lastY;
+        this.camera.processMouseMovement(dx, dy);
+        lastX = x;
+        lastY = y;
+    });
+    this.canvas.addEventListener("touchend", (e) => {
+        fingerDown = false;
     });
 
     // update keyboard

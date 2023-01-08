@@ -50,7 +50,11 @@ Use
   W 
 A S D 
 
-to move the camera`}
+to move the camera
+
+Computação Gráfica
+Nicolas Vycas Nery 2023
+`}
       </div>
       <div
         style={{
